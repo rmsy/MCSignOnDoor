@@ -516,7 +516,7 @@ public class MCSignOnDoor {
 			if ((val = p.getProperty("advanced.forceversion")) != null) //not in config.template
 				actAsVersion = -2;
 			if ((val = p.getProperty("advanced.actas")) != null) //not in config.template
-				actAsVersion = getKnownProtocolVersion(Integer.getInteger(val));
+				actAsVersion = getKnownProtocolVersion(Integer.parseInt(val));
 			
 			
 			if ((val = p.getProperty("file.log")) != null) {
