@@ -53,13 +53,7 @@ import org.digiplex.common.TemplateFormatter.MalformedFormatException;
 public class MCSignOnDoor {
 	private static final Logger LOG = Logger.getLogger("McSod");
 	private static final String VERSION = "1.9";
-	private static final int CURRENT_PROTOCOL_VERSION; //set in constructor below
-
-	static { //static constructor
-		String protoversion = MCSignOnDoor.class.getPackage().getSpecificationVersion();
-		if (protoversion == null) protoversion = /****/ "60" /****/; //up to date protocol version - UPDATE MANIFEST TOO!
-		CURRENT_PROTOCOL_VERSION = Integer.parseInt(protoversion);
-	}
+	private static final int CURRENT_PROTOCOL_VERSION = 74;
 
 	private static final String BLACKLIST_IP_FILE = "banned-ips.txt";
 	private static final String BLACKLIST_NAME_FILE = "banned-players.txt";
