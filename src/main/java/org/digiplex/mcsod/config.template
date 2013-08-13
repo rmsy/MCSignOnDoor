@@ -12,8 +12,11 @@
 ### Away Message - The message sent to connecting players
 %H_MSG%message.away = %V_MSG%
 
-### Sentry Mode - When true, McSod will exit when someone connects.
+### Sentry Mode - When true, McSod will exit when someone (not banned) connects.
 %H_SNTRY%mode.sentry = %V_SNTRY%
+
+### Strict sentry Mode - When true, McSod will exit when someone whitelisted (and not banned) connects.
+%H_STRSNTRY%mode.strictsentry = %V_STRSNTRY%
 
 ### Message of the Day - The message sent in response to server list pings
 %H_MOTD%message.motd = %V_MOTD%

@@ -53,6 +53,10 @@ Command line switches:
 		    When someone not banned tries to connect to the server, McSod 
 		    will exit immediately with the return value 12. Useful in 
 		    conjunction with a looping script.
+	   --strictsentrymode
+		    When someone whitelisted (and not banned) tries to connect to the
+		    server, McSod will exit immediately with the return value 12.
+		    Useful in conjunction with a looping script.
 
 	-c --config [file]
 		    Tells McSod to read the configuration file specified. All command

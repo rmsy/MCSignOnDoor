@@ -68,6 +68,7 @@ public class MCSignOnDoor {
 	private static String reportedVersionNumber = "Offline";
 
 	private static boolean sentryMode = false;
+	private static boolean strictSentryMode = false;
 
 	private static String awayMessage = "The server is not currently running.";
 
@@ -136,7 +137,7 @@ public class MCSignOnDoor {
 			else
 				LOG.info("Server set to ignore pings.");
 
-			if (sentryMode)
+			if (sentryMode || strictSentryMode)
 				LOG.info("Server set to sentry mode, will exit when someone connects.");
 
 			LOG.info("Server protocol set to "+((actAsVersion < 0)?"latest ("+CURRENT_PROTOCOL_VERSION+")":"act as "+actAsVersion)+"."+
@@ -151,21 +152,21 @@ public class MCSignOnDoor {
 				}
 			}
 
-			if (whitelistMessage != null){
-				if (!whiteUsersLoaded) {
-					LOG.warning("There was an error loading the whitelist users.");
-				} else {
+			if (whiteUsersLoaded) {
+				if (whitelistMessage != null) {
 					LOG.info("Whitelist message set: "+whitelistMessage);
-					if (whiteUsers.isEmpty()) LOG.warning("There are no entries in the whitelist.");
 				}
+				if (whiteUsers.isEmpty()) LOG.warning("There are no entries in the whitelist.");
+			} else if (whitelistMessage != null) {
+				LOG.warning("There was an error loading the whitelist users.");
 			}
-			if (bannedMessage != null){
-				if (!bannedUsersLoaded) {
-					LOG.warning("There was an error loading the banned users.");
-				} else {
+			if (bannedUsersLoaded) {
+				if (bannedMessage != null) {
 					LOG.info("Banned list message set: "+bannedMessage);
-					if (bannedUsers.isEmpty()) LOG.warning("There are no entries in the banned users list.");
 				}
+				if (bannedUsers.isEmpty()) LOG.warning("There are no entries in the banned users list.");
+			} else if (!bannedUsersLoaded) {
+				LOG.warning("There was an error loading the banned users.");
 			}
 			if (blockedMessage != null){
 				if (!blockedIpLoaded) {
@@ -429,6 +430,8 @@ public class MCSignOnDoor {
 					basepath = new File(argbuffer.pop()).getPath()+File.separator;
 				} else if (arg.equalsIgnoreCase("--sentrymode")){
 					sentryMode = true;
+				} else if (arg.equalsIgnoreCase("--strictsentrymode")){
+					strictSentryMode = true;
 				} else if (arg.equalsIgnoreCase("-l") || arg.equalsIgnoreCase("--log") || arg.equalsIgnoreCase("--logfile")){
 					String logfilename;
 					if (!argbuffer.peek().startsWith("-")){
@@ -486,6 +489,8 @@ public class MCSignOnDoor {
 
 			if ((val = p.getProperty("mode.sentry")) != null)
 				sentryMode = Boolean.parseBoolean(val);
+			if ((val = p.getProperty("mode.strictsentry")) != null)
+				strictSentryMode = Boolean.parseBoolean(val);
 
 			if ((val = p.getProperty("message.away")) != null)
 				if (!setAwayMessage(val)) { System.exit(-1); }
@@ -608,6 +613,9 @@ public class MCSignOnDoor {
 			tf.defineVariable("H_SNTRY", (!sentryMode)?"#":"");
 			tf.defineVariable("V_SNTRY", Boolean.toString(sentryMode));
 
+			tf.defineVariable("H_STRSNTRY", (!strictSentryMode)?"#":"");
+			tf.defineVariable("V_STRSNTRY", Boolean.toString(strictSentryMode));
+
 			tf.defineVariable("H_MOTD", (motdMessage == null)?"#":"");
 			tf.defineVariable("V_MOTD", (motdMessage == null)?"":motdMessage);
 
@@ -686,9 +694,9 @@ public class MCSignOnDoor {
 			}
 		}
 
-		if (bannedMessage != null && bannedUsers == null){ //if a message was set but a file was not specified
+		if (bannedUsers == null) {
 			loadBlackList(BLACKLIST_NAME_FILE);
-			if (blockedMessage == null){
+			if (blockedMessage == null && bannedMessage != null) {
 				blockedMessage = bannedMessage;
 			}
 			if (blockedIps == null) {
@@ -696,7 +704,7 @@ public class MCSignOnDoor {
 			}
 		}
 
-		if (whitelistMessage != null && whiteUsers == null){ //if a message was set but a file was not specified
+		if (whiteUsers == null) {
 			loadWhiteList(WHITELIST_NAME_FILE);
 		}
 	}
@@ -838,31 +846,39 @@ public class MCSignOnDoor {
 					//spoof the encryption start, and then disconnect as if something went wrong in verification
 					spoofEncryptionHandshake(handler.encryptionResponse);
 
+					sentryActivated = true;
 
 					if (isBlocked){
 						SBL.append(". Client found on the banned IPs list. The bastard.");
 						sendDisconnect(blockedMessage, handler.disconnectResponse);
 						return;
 					}
-					if (bannedMessage != null){// bannedUsers != null){
+					if (bannedUsers != null) {
 						if (bannedUsers.contains(reportedName)) {
-							SBL.append(". Client found on the blacklist. Shooing.");
-							sendDisconnect(bannedMessage, handler.disconnectResponse);
-							return;
+							if (bannedMessage != null){
+								SBL.append(". Client found on the blacklist. Shooing.");
+								sendDisconnect(bannedMessage, handler.disconnectResponse);
+								return;
+							}
+							sentryActivated = false;
 						}
 					}
-					if (whitelistMessage != null){// whiteUsers != null){
+					if (whiteUsers != null) {
 						if (whiteUsers.contains(reportedName)) {
-							SBL.append(". Client found on the whitelist. Giving candy.");
-							sendDisconnect(whitelistMessage, handler.disconnectResponse);
-							sentryActivated = true;
-							return;
+							if (whitelistMessage != null) {
+								SBL.append(". Client found on the whitelist. Giving candy.");
+								sendDisconnect(whitelistMessage, handler.disconnectResponse);
+								return;
+							}
+						} else {
+							if (strictSentryMode) {
+								sentryActivated = false;
+							}
 						}
 					}
 
 					SBL.append(". Turning away.");
 					sendDisconnect(awayMessage, handler.disconnectResponse);
-					sentryActivated = true;
 				} //*/
 			} catch (IOException e) {
 				LOG.log(Level.SEVERE, "IOException while processing client!", e);
@@ -871,7 +887,7 @@ public class MCSignOnDoor {
 				try {sock.close();} catch (IOException e){}
 			}
 
-			if (sentryMode && sentryActivated) {
+			if ((sentryMode || strictSentryMode) && sentryActivated) {
 				LOG.info("As per Sentry Mode, now shutting down.");
 				System.exit(12);
 			}
